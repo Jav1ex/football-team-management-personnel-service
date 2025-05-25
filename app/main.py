@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
-from database import database
+from database 
 import models, schemas
 from datetime import date
 

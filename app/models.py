@@ -1,5 +1,5 @@
 from sqlalchemy import Table, Column, Integer, String, BigInteger, Numeric, Date, ForeignKey, MetaData, Enum
-from database import metadata
+from .database import metadata
 
 jugador = Table(
     "jugador",

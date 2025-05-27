@@ -6,17 +6,62 @@ Dependencies: SQLAlchemy.
 """
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import QueuePool
+from sqlalchemy.exc import SQLAlchemyError, OperationalError
+import logging
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
+logger = logging.getLogger(__name__)
 
 DATABASE_URL = "postgresql://postgres.olzrkkjzqltovkvxeggb:UyikRRRGhgGLUYRI@aws-0-us-east-2.pooler.supabase.com:5432/postgres"
 
-engine = create_engine(DATABASE_URL)
+# Configure the engine with connection pool settings
+engine = create_engine(
+    DATABASE_URL,
+    poolclass=QueuePool,
+    pool_size=5,
+    max_overflow=10,
+    pool_timeout=60,
+    pool_recycle=30,
+    pool_pre_ping=True,
+    echo=False,
+    connect_args={
+        "connect_timeout": 60,
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5,
+        "application_name": "football-team-management-personnel",
+        "options": "-c statement_timeout=60000"
+    }
+)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 metadata = MetaData()
 
-# Dependency
 def get_db():
     db = SessionLocal()
     try:
         yield db
+    except OperationalError as e:
+        logger.error(f"Error de conexión a la base de datos: {str(e)}")
+        db.rollback()
+        raise e
+    except SQLAlchemyError as e:
+        logger.error(f"Error de SQLAlchemy: {str(e)}")
+        db.rollback()
+        raise e
     finally:
-        db.close() 
+        db.close()
+
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=1, min=4, max=30),
+    retry=retry_if_exception_type(OperationalError),
+    reraise=True
+)
+def execute_with_retry(func, *args, **kwargs):
+    """
+    Función auxiliar para ejecutar operaciones de base de datos con reintentos
+    """
+    return func(*args, **kwargs) 

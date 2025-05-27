@@ -19,20 +19,20 @@ DATABASE_URL = "postgresql://postgres.olzrkkjzqltovkvxeggb:UyikRRRGhgGLUYRI@aws-
 engine = create_engine(
     DATABASE_URL,
     poolclass=QueuePool,
-    pool_size=5,
-    max_overflow=10,
-    pool_timeout=60,
-    pool_recycle=30,
-    pool_pre_ping=True,
-    echo=False,
+    pool_size=5,  # Aumentado para manejar más conexiones
+    max_overflow=10,  # Aumentado para permitir más conexiones en picos
+    pool_timeout=60,  # Aumentado para dar más tiempo a las conexiones
+    pool_recycle=30,  # Reciclar conexiones cada 30 segundos
+    pool_pre_ping=True,  # Verificar conexiones antes de usarlas
+    echo=False,  # Deshabilitar logging SQL
     connect_args={
-        "connect_timeout": 60,
+        "connect_timeout": 60,  # Aumentado timeout de conexión
         "keepalives": 1,
         "keepalives_idle": 30,
         "keepalives_interval": 10,
         "keepalives_count": 5,
         "application_name": "football-team-management-personnel",
-        "options": "-c statement_timeout=60000"
+        "options": "-c statement_timeout=60000"  # Timeout de 60 segundos para consultas
     }
 )
 
@@ -55,9 +55,9 @@ def get_db():
         db.close()
 
 @retry(
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=1, min=4, max=30),
-    retry=retry_if_exception_type(OperationalError),
+    stop=stop_after_attempt(5),  # Aumentado a 5 intentos
+    wait=wait_exponential(multiplier=1, min=4, max=30),  # Espera más larga entre intentos
+    retry=retry_if_exception_type(OperationalError),  # Solo reintentar errores de conexión
     reraise=True
 )
 def execute_with_retry(func, *args, **kwargs):
